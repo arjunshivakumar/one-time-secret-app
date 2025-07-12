@@ -25,8 +25,33 @@ services:
     networks:
       - backend
 
+  # ────────────────────────────────────────────────────────────────
+  # NEW: pgAdmin service for a web‑based GUI
+  # Browse at http://localhost:5050 after `docker compose up -d`
+  # ────────────────────────────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:8          # latest pgAdmin 8.x tag
+    container_name: pgadmin
+    restart: unless-stopped
+    
+    env_file:               # tell Compose to load variables from .env
+      - .env
+
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"                    # HostPort:ContainerPort → browser on 5050
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin  # persists saved connections & settings
+    depends_on:
+      - db                           # wait for Postgres  
+    networks:
+      - backend                      # same internal network as api & db
+
 volumes:
   pgdata:
+  pgadmin-data:                      # volume for pgAdmin configuration
 
 networks:
   backend:

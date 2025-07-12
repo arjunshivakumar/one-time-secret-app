@@ -36,5 +36,4 @@ def create_secret(req: SecretRequest, db: Session = Depends(get_db)):
     )
     db.add(db_secret)
     db.commit()
-
     return {"url": f"http://localhost:8000/secret/{secret_id}"}
