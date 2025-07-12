@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 import uuid
-
-from app.crypto import encrypt_secret
+from uuid import UUID
+from app.crypto import encrypt_secret, decrypt_secret
 from app.db import SessionLocal
 from sqlalchemy.orm import Session
 from app import models
+from datetime import datetime, timedelta
 
 
 router = APIRouter()
@@ -37,3 +38,24 @@ def create_secret(req: SecretRequest, db: Session = Depends(get_db)):
     db.add(db_secret)
     db.commit()
     return {"url": f"http://localhost:8000/secret/{secret_id}"}
+
+@router.get("/secret/{secret_id}")
+def get_secret(secret_id: str, db: Session = Depends(get_db)):
+    secret = db.query(models.Secret).filter(models.Secret.id == secret_id).first()
+
+    if not secret:
+        raise HTTPException(status_code=404, detail="Secret not found")
+    
+    if secret.expire_after_minutes > 0 and datetime.now() - secret.created_at > timedelta(minutes=secret.expire_after_minutes):
+        db.delete(secret)
+        db.commit()
+        raise HTTPException(status_code=410, detail="Secret has expired")
+    
+    try:
+        plain_text = decrypt_secret(secret.encrypted_secret)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to decrypt secret: {str(e)}")
+    
+    return {
+        "secret": plain_text
+    }
