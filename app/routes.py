@@ -53,6 +53,8 @@ def get_secret(secret_id: str, db: Session = Depends(get_db)):
     
     try:
         plain_text = decrypt_secret(secret.encrypted_secret)
+        db.delete(secret)
+        db.commit()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to decrypt secret: {str(e)}")
     
