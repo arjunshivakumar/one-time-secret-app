@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import uuid
 from uuid import UUID
 from app.crypto import encrypt_secret, decrypt_secret
-from app.db import SessionLocal
+from app.db import SessionLocal, get_db
 from sqlalchemy.orm import Session
 from app import models
 from datetime import datetime, timedelta
@@ -15,13 +15,6 @@ class SecretRequest(BaseModel):
     secret: str
     expire_after_minutes: int
     password: str | None = None
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 @router.post("/secret")
 def create_secret(req: SecretRequest, db: Session = Depends(get_db)):
