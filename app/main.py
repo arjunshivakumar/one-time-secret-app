@@ -1,21 +1,20 @@
-import time
+# app/main.py
 import os
+import time
 import psycopg2
 from psycopg2 import OperationalError
 from fastapi import FastAPI
-from .routes import router
-
 from .db import engine, Base
+
+# -------------------------------------------------
+# ❶  Detect test mode
+IS_TEST = os.getenv("TESTING") == "1"
+# -------------------------------------------------
 
 def wait_for_postgres(host: str, user: str, password: str, db: str):
     while True:
         try:
-            conn = psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                dbname=db
-            )
+            conn = psycopg2.connect(host=host, user=user, password=password, dbname=db)
             conn.close()
             print("✅ PostgreSQL is available.")
             break
@@ -23,20 +22,25 @@ def wait_for_postgres(host: str, user: str, password: str, db: str):
             print("⏳ Waiting for PostgreSQL...")
             time.sleep(1)
 
-# Wait for the DB
-wait_for_postgres(
-    host='db',
-    user=os.environ["POSTGRES_USER"],
-    password=os.environ["POSTGRES_PASSWORD"],
-    db=os.environ["POSTGRES_DB"]
-)
+# -------------------------------------------------
+# ❷  Only run these lines when NOT testing
+if not IS_TEST:
+    wait_for_postgres(
+        host="db",
+        user=os.environ["POSTGRES_USER"],
+        password=os.environ["POSTGRES_PASSWORD"],
+        db=os.environ["POSTGRES_DB"],
+    )
+    Base.metadata.create_all(bind=engine)
+# -------------------------------------------------
 
-# Init SQLAlchemy models
-Base.metadata.create_all(bind=engine)
+def create_app() -> FastAPI:
+    from .routes import router
+    app = FastAPI()
+    app.include_router(router)
+    return app
 
-# ✅ Create the FastAPI app instance
-app = FastAPI()
-app.include_router(router)
+app = create_app()
 
 @app.get("/")
 def read_root():
