@@ -45,50 +45,65 @@ def test_create_secret_basic():
     secret_id = match.group(1)
     assert len(secret_id) > 0
 
-# def test_create_secret_with_password_and_expiry():
-#     response = client.post("/secret", json={
-#         "secret": "secure",
-#         "password": "hunter2",
-#         "expire_after_minutes": 1
-#     })
-#     assert response.status_code == 200
-#     assert "id" in response.json()
+def test_create_secret_with_password_and_expiry():
+    response = client.post("/secret", json={
+        "secret": "secure",
+        "password": "hunter2",
+        "expire_after_minutes": 1
+    })
+    assert response.status_code == 200
+    assert "url" in response.json()
 
 def test_read_secret_once_only():
     # Create a secret
     res = client.post("/secret", json={
         "secret": "my-test-secret",
-        "expire_after_minutes": 10
+        "expire_after_minutes": None
     })
     secret_id = res.json()["url"].split("/")[-1]
-    print(secret_id)
+
     # Read once – should succeed
-    read_res = client.get(f"/secret/{secret_id}")
-    print(read_res.json())
+    read_res = client.post("/secret/access", json={
+        "secret_id": secret_id,
+        "password": ""  # empty string if no password was set
+    })
     assert read_res.status_code == 200
     assert read_res.json()["secret"] == "my-test-secret"
 
-    # Read again – should fail
-    read_res_again = client.get(f"/secret/{secret_id}")
+    # Read again – should fail (secret already deleted after one read)
+    read_res_again = client.post("/secret/access", json={
+        "secret_id": secret_id,
+        "password": ""
+    })
     assert read_res_again.status_code in [404, 410]
 
-def test_expired_secret_returns_410():
-    # Create a secret that expired 0 minutes ago
-    res = client.post("/secret", json={"secret": "expired", "expire_after_minutes": 0})
-    secret_id = res.json()["url"].split("/")[-1]   
 
-    expired_res = client.get(f"/secret/{secret_id}")
+def test_expired_secret_returns_410():
+    # Create a secret that expires immediately
+    res = client.post("/secret", json={"secret": "expired", "expire_after_minutes": 0})
+    secret_id = res.json()["url"].split("/")[-1]
+
+    # Try to access it – should be expired
+    expired_res = client.post("/secret/access", json={
+        "secret_id": secret_id,
+        "password": ""  # no password
+    })
     assert expired_res.status_code == 410
+
 
 def test_secret_not_found():
     res = client.get("/secret/fake-uuid")
     assert res.status_code == 404
 
-# def test_incorrect_password():
-#     res = client.post("/secret", json={"secret": "top", "password": "1234"})
-#     secret_id = res.json()["id"]
+def test_incorrect_password():
+    # Create a password-protected secret
+    res = client.post("/secret", json={"secret": "top", "password": "1234"})
+    secret_id = res.json()["url"].split("/")[-1]
 
-#     # Read with wrong password
-#     res = client.get(f"/secret/{secret_id}?password=wrong")
-#     assert res.status_code == 401
+    # Try accessing with the wrong password
+    res = client.post("/secret/access", json={
+        "secret_id": secret_id,
+        "password": "wrong"
+    })
+    assert res.status_code == 403  
 
