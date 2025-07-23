@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
 import uuid
 from uuid import UUID
@@ -20,6 +20,7 @@ class SecretRequest(BaseModel):
     )
     password: str | None = None
 
+
 @router.post("/secret")
 def create_secret(req: SecretRequest, db: Session = Depends(get_db)):
     secret_id = str(uuid.uuid4())
@@ -40,26 +41,35 @@ def create_secret(req: SecretRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"url": f"http://localhost:8000/secret/{secret_id}"}
 
-@router.get("/secret/{secret_id}")
-def get_secret(secret_id: str, db: Session = Depends(get_db)):
-    secret = db.query(models.Secret).filter(models.Secret.id == secret_id).first()
+
+class SecretAccessRequest(BaseModel):
+    secret_id: str
+    password: str
+
+@router.post("/secret/access")
+def access_secret(
+    req: SecretAccessRequest,
+    db: Session = Depends(get_db)
+):
+    secret = db.query(models.Secret).filter(models.Secret.id == req.secret_id).first()
     if not secret:
         raise HTTPException(status_code=404, detail="Secret not found")
-    # print(f"created_at: {secret.created_at}, tzinfo: {secret.created_at.tzinfo}")
 
-
-    # Use UTC for comparison
     now = datetime.now(UTC)
     created_at = secret.created_at
-    # If created_at is naive, make it aware (assume UTC)
     if created_at.tzinfo is None:
         created_at = created_at.replace(tzinfo=UTC)
+
     if secret.expire_after_minutes is not None:
         if secret.expire_after_minutes == 0 or now - created_at > timedelta(minutes=secret.expire_after_minutes):
             db.delete(secret)
             db.commit()
             raise HTTPException(status_code=410, detail="Secret has expired")
 
+    # Password verification
+    if secret.password_hash:
+        if not bcrypt.checkpw(req.password.encode('utf-8'), secret.password_hash.encode('utf-8')):
+            raise HTTPException(status_code=403, detail="Incorrect password")
 
     try:
         plain_text = decrypt_secret(secret.encrypted_secret)
