@@ -1,4 +1,4 @@
-```markdown
+
 # 🔐 One-Time Secret App
 
 A secure API for sharing secrets that can only be viewed **once**, built with **FastAPI**, **SQLAlchemy**, and **PostgreSQL**. Secrets are encrypted and stored securely, and they self-destruct after being retrieved.
@@ -178,4 +178,3 @@ Contributions are welcome! To contribute:
 ## 📜 License
 
 MIT License
-```
