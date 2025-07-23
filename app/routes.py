@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app import models
 from datetime import datetime, timedelta, UTC
 from typing import Optional
-
+import bcrypt
 
 router = APIRouter()
 class SecretRequest(BaseModel):
@@ -23,13 +23,17 @@ class SecretRequest(BaseModel):
 @router.post("/secret")
 def create_secret(req: SecretRequest, db: Session = Depends(get_db)):
     secret_id = str(uuid.uuid4())
+    print(req.password)
     encrypted_secret = encrypt_secret(req.secret)
-
+    password_hash = None
+    if req.password:
+        salt = bcrypt.gensalt()
+        password_hash = bcrypt.hashpw(req.password.encode('utf-8'), salt).decode('utf-8')
     # Save to DB
     db_secret = models.Secret(
         id=secret_id,
         encrypted_secret=encrypted_secret,
-        password_hash=None,  # implement bcrypt later
+        password_hash=password_hash,  
         expire_after_minutes=req.expire_after_minutes
     )
     db.add(db_secret)

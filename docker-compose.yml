@@ -48,7 +48,8 @@ services:
       - db                           # wait for Postgres  
     networks:
       - backend                      # same internal network as api & db
-
+    logging:
+      driver: "none"
 volumes:
   pgdata:
   pgadmin-data:                      # volume for pgAdmin configuration

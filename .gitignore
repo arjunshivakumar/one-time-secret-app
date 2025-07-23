@@ -1,3 +1,26 @@
 .env
 **/__pycache__/
 venv
+test.sb# Ignore Python environment
+venv/
+.env
+
+# Ignore compiled bytecode
+**/__pycache__/
+**/*.py[cod]
+
+# Ignore local SQLite database file (typo fixed)
+test.db
+
+# Ignore test cache (pytest)
+.pytest_cache/
+
+# Ignore editor-specific files (optional)
+*.swp
+*.swo
+*.idea/
+.vscode/
+
+# Ignore OS-specific files (optional)
+.DS_Store
+Thumbs.db
